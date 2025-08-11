@@ -1,5 +1,5 @@
 # Multi-stage build for build-manager
-FROM archlinux:multilib-devel AS base
+FROM --platform=linux/amd64 archlinux:multilib-devel AS base
 
 # Update the image and install dependencies
 RUN pacman-key --init
