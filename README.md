@@ -84,11 +84,12 @@ This object is used to limit how many system resources the builder instance is a
 
 This object is used to define the settings in order to build one specific package.
 
-| **Field**                | **Required** | **Type**           | **Description**                                                                                                             |
-| ------------------------ | ------------ | ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| `packageName`            | Yes          | `string`           | Defines the name of the AUR package that should be build.                                                                   |
-| `resolveDependenciesAs`  | No           | `object`           | A key-value mapping where the key is the original dependency, and the value is the replacement package that should be used. |
-| `runCommandsBeforeBuild` | No           | `array of strings` | An array of shell commands to be executed before the package build process starts.                                          |
+| **Field**                | **Required** | **Type**               | **Description**                                                                                                            |
+|--------------------------|--------------|------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `enabled`                | Yes          | `boolean`              | Defines if this package should be build or not, can be used to temporarily stop building a specific package.               |
+| `packageName`            | Yes          | `string`               | Defines the name of the AUR package that should be build.                                                                  |
+| `resolveDependenciesAs`  | No           | `object`               | A key-value mapping where the key is the original dependency, and the value is the replacement package that should be used.|
+| `runCommandsBeforeBuild` | No           | `array of strings`     | An array of shell commands to be executed before the package build process starts.                                         |
 
 > [!TIP]
 > The build process is executed in a separate container for each AUR package, which is destroyed after the build is complete.
