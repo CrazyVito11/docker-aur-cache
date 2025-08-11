@@ -2,7 +2,6 @@
 
 set -e
 
-
 # First, ensure that required directories are made
 mkdir -p /repository/archive
 mkdir -p /repository/build-reports
@@ -17,4 +16,4 @@ node ./dist/build-manager.js \
     --build_report_dir=/repository/build-reports \
     --repository_archive_dir=/repository/archive \
     --repository_dir=/repository \
-    --repository_name=docker-aur-cache
+    --repository_name=$COMPOSE_PROJECT_NAME

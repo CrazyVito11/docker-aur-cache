@@ -1,8 +1,9 @@
 {
   "name": "builder",
-  "main": "./src/builder.ts",
+  "main": "./dist/builder.js",
   "scripts": {
-    "build": "npx tsc"
+    "build": "npx tsc",
+    "start": "node ./dist/builder.js"
   },
   "devDependencies": {
     "@types/node": "^20.14.11",

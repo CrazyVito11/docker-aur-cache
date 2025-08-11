@@ -26,7 +26,8 @@ RUN npm install && npm run build
 
 WORKDIR /repository-builder
 USER root
-RUN chmod 777 /repository-builder
+RUN chown builder:builder /repository-builder
+RUN chmod 755 /repository-builder
 USER builder
 
 CMD ["fcron", "--foreground", "--firstsleep", "0"]
