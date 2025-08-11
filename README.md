@@ -26,7 +26,7 @@ This can also be extra beneficial if you have multiple computers running Arch Li
    > See the section **Bind NGINX to port instead of Traefik** for instructions.
 
 2. Create a folder, preferably one called `docker-aur-cache`
-3. Run `sh -c $(curl -fsSL https://raw.githubusercontent.com/CrazyVito11/docker-aur-cache/refs/heads/master/setup.sh)`
+3. Run `curl -fsSL https://raw.githubusercontent.com/CrazyVito11/docker-aur-cache/refs/heads/master/setup.sh | sh`
    - This script wil create the following files and folders: `./repository/`, `./assets/nginx-default.conf`, `.env` & `packagelist.json`.
 4. Make changes to the `.env` file if needed
 5. Add the packages you want to provide to the `packagelist.json` file
