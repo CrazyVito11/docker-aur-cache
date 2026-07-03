@@ -1,5 +1,5 @@
 export default interface ContainerStatsLine {
-    sampleTakenAt: number,
+    sampleTakenAt: string,
     cpuUsagePercent: number,
     memoryUsageMB: number,
     memoryUsagePercent: number,

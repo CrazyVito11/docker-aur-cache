@@ -41,6 +41,7 @@ export default class LineTransformer extends Transform {
                 const content = this.bufferSlice(this.nextDataLength);
 
                 const logLine: PackageBuildReportLogLine = {
+                    timestamp: new Date().toISOString(),
                     type: this.nextDataType === 1 ? "standard" : "error",
                     value: content.toString('utf8')
                 };

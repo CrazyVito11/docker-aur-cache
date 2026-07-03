@@ -55,7 +55,7 @@ export default class ContainerStatsTransformer extends Transform {
         }
 
         const containerStats: ContainerStatsLine = {
-            sampleTakenAt: new Date().getTime(),
+            sampleTakenAt: new Date().toISOString(),
             cpuUsagePercent: parseFloat(cpuUsagePercent.toFixed(2)),
             memoryUsageMB: parseFloat(memoryUsageMB.toFixed(2)),
             memoryUsagePercent: parseFloat(memoryUsagePercent.toFixed(2))

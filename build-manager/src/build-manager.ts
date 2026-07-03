@@ -14,6 +14,7 @@ import PackageListConfiguration from './Types/PackageListConfiguration';
 import PackageBuildReport from './Types/PackageBuildReport';
 import PackageBuildReportLogLine from './Types/PackageBuildReportLogLine';
 import ContainerStatsLine from './Types/ContainerStatsLine';
+import BuildReport from './Types/BuildReport';
 
 const params = ParameterHelper.getParameters();
 const docker = new Docker();
@@ -230,6 +231,7 @@ const handlePackageList = async (aurPackageListPath: string) => {
                     console.error(`[build-manager] The package took too long to build, aborting`);
 
                     packageBuildReport.logs.push({
+                        timestamp: new Date().toISOString(),
                         type: 'error',
                         value: 'The package took too long to build, aborting'
                     });
@@ -286,6 +288,7 @@ const handlePackageList = async (aurPackageListPath: string) => {
             console.log(`[build-manager] ${packageSkippedMessage}`);
 
             packageBuildReport.logs.push({
+                timestamp: new Date().toISOString(),
                 type: 'error',
                 value: packageSkippedMessage
             });
@@ -317,12 +320,19 @@ const handlePackageList = async (aurPackageListPath: string) => {
 const generateBuildReport = async () => {
     console.log("[build-manager] Generating build report");
 
-    const currentDate = new Date();
-    const formattedDate = TimeHelper.getFormattedDateTimeForFilename(currentDate);
+    const buildEndTime = new Date();
+    const formattedDate = TimeHelper.getFormattedDateTimeForFilename(buildEndTime);
+
+    const buildReport: BuildReport = {
+        version: 1,
+        buildStartTime: startTime.toISOString(),
+        buildEndTime: buildEndTime.toISOString(),
+        packages: packageBuildReports,
+    };
 
     fs.writeFileSync(
         `${params.build_report_dir}/build-report-${formattedDate}.json`,
-        JSON.stringify(packageBuildReports)
+        JSON.stringify(buildReport)
     );
 
     console.log("[build-manager] The build report has been generated");
