@@ -3,17 +3,29 @@ services:
     build:
       context: ./
       dockerfile: ./build-manager/docker/Dockerfile
-      args:
-        - DOCKER_GID=${DOCKER_GID:-964}
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./repository:/repository:cached
       - ./packagelist.config.json:/repository-builder/packagelist.config.json:ro
       - package-staging:/package-staging
       - aur-package-list:/aur-package-list
+    environment:
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375
     restart: unless-stopped
     networks:
       - default
+
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.4.2
+    restart: unless-stopped
+    networks:
+      - default
+    environment:
+      - POST=1        # Allow non-GET methods to allow us to interact with the Docker engine, instead of it being "read-only"
+      - CONTAINERS=1  # List, create, start, attach, stream stats, wait for, and remove builder containers
+      - IMAGES=1      # List and remove the builder image between runs
+      - BUILD=1       # Required for building a fresh builder image before each build cycle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
   nginx:
     image: nginx:latest

@@ -15,6 +15,33 @@ This Docker container was made to compile these AUR packages beforehand, and the
 This can also be extra beneficial if you have multiple computers running Arch Linux, as then you only have to compile the packages once for all those machines.
 
 
+## Architecture & Security
+This project consists of 2 core components, the build manager and builder.
+
+The build manager is responsible for managing the builder container, this includes building a new up-to-date version of that builder each time we want to build the package. This makes sure we are running a up-to-date "Arch" installation for each build we want to perform.
+
+The builder is responsible for actually cloning and building the AUR package, including all required dependencies of that AUR package.
+This container is thrown away and restarted for each AUR package you have configured, so each AUR build is performed in a clean environment.
+
+Because the builder container is thrown away after each build, it should also be pretty safe against malicious packages trying to compromise the build server. Just make sure to keep your Docker engine up-to-date to protect against potential Docker engine escape vulnerabilities.
+
+> [!WARNING]
+> Please note that if you build a malicious package, it will still be served by the server and could then be installed by a client, compromising that client.
+>
+> You should still proceed with caution when adding new AUR packages and keep up with Arch Linux news.
+
+The build manager also imposes certain limits to the builder.
+If the builder gets stuck on a package, it will eventually be forcefully killed by the build manager once the maximum time has expired.
+
+This not only prevents a build from unnecessarily consuming resources, it can also automatically clean up packages that intentionally cause this _(crypto miners for example)_.
+If a builder consumes too much RAM and the system starts running out of memory, we have configured the OOM score to be very high, making it likely the builder will be killed instead of something else on the server.
+
+Direct communication from the builder to the build manager isn't possible for security reasons, and in case somehow the builder could access the build manager, we have limited the Docker socket to only the bare minimum we need to limit the attack surface.
+
+The only method the builder can use to pass results to the build manager, is to use the shared Docker volume, which it uses to pass the compiled packages back to the manager.
+Once all packages have been built, the build manager scans the volume for `.pkg.tar.zst` files and moves them into the repository.
+
+
 ## Setup (Container)
 1. Make sure you meet the follow prerequisites
     - Docker + Docker Compose have been installed

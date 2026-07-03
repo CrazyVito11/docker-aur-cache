@@ -16,7 +16,7 @@ import PackageBuildReportLogLine from './Types/PackageBuildReportLogLine';
 import ContainerStatsLine from './Types/ContainerStatsLine';
 
 const params = ParameterHelper.getParameters();
-const docker = new Docker({socketPath: '/var/run/docker.sock'});
+const docker = new Docker();
 
 
 const paramsValidationMessages = ValidatorHelper.validateObject(

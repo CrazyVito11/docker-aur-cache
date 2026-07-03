@@ -3,23 +3,40 @@ import { ContainerStats } from "dockerode";
 import ContainerStatsLine from "../Types/ContainerStatsLine";
 
 export default class ContainerStatsTransformer extends Transform {
+    private buffer = '';
 
     constructor() {
         super({ readableObjectMode: true });
     }
 
     public _transform(data: any, encoding: BufferEncoding, callback: Function) {
-        try {
-            this.processStats(data);
-        } catch (e) {
-            console.error(`[build-manager] An error occurred while processing the container stats`, e);
+        // The stats stream is newline-delimited JSON, so we need to buffer it
+        this.buffer += data.toString();
+
+        // Split each newline to get each full stats JSON object
+        const statsJsonMessages = this.buffer.split('\n');
+
+        // Keep the last element in the buffer, as it may be an incomplete JSON object
+        this.buffer = statsJsonMessages.pop() ?? '';
+
+        for (const statsJsonMessage of statsJsonMessages) {
+            const trimmedStatsJsonMessage = statsJsonMessage.trim();
+
+            // Skip empty lines that may appear between JSON objects
+            if (! trimmedStatsJsonMessage) continue;
+
+            try {
+                this.processStats(trimmedStatsJsonMessage);
+            } catch (e) {
+                console.error(`[build-manager] An error occurred while processing the container stats`, e);
+            }
         }
 
         callback();
     }
 
-    private processStats(data: any) {
-        const stats: ContainerStats = JSON.parse(data.toString());
+    private processStats(data: string) {
+        const stats: ContainerStats = JSON.parse(data);
 
         // CPU Usage calculation
         const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
