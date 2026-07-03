@@ -49,8 +49,8 @@ export default class ContainerStatsTransformer extends Transform {
         const memoryLimitMB = stats.memory_stats.limit / (1024 * 1024); // Convert to MB
         const memoryUsagePercent = (memoryUsageMB / memoryLimitMB) * 100;
 
-        // Throw away invalid samples
-        if (typeof cpuUsagePercent !== 'number' || typeof memoryUsageMB !== 'number' || typeof memoryUsagePercent !== 'number') {
+        // Throw away invalid samples (Number.isFinite also rejects NaN and Infinity samples, unlike typeof)
+        if (! Number.isFinite(cpuUsagePercent) || ! Number.isFinite(memoryUsageMB) || ! Number.isFinite(memoryUsagePercent)) {
             return;
         }
 
