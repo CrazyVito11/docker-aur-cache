@@ -13,6 +13,11 @@ services:
     restart: unless-stopped
     networks:
       - default
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   docker-socket-proxy:
     image: tecnativa/docker-socket-proxy:v0.4.2
@@ -26,6 +31,11 @@ services:
       - BUILD=1       # Required for building a fresh builder image before each build cycle
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   nginx:
     image: nginx:latest
@@ -35,6 +45,11 @@ services:
     restart: unless-stopped
     networks:
       - default
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
 
 volumes:
   package-staging:
