@@ -44,6 +44,24 @@ export default class PackageHelper {
         return !! PackageHelper.getAurPackageInformationByPackageName(params, packageName);
     }
 
+    public static isPackageInstalled(packageName: string): boolean {
+        if (! PackageHelper.isValidPackageName(packageName)) {
+            console.warn(`[builder] Package "${packageName}" has an invalid name`);
+
+            return false;
+        }
+
+        try {
+            execSync(`pacman -Qi ${packageName} > /dev/null`);
+
+            return true;
+        } catch (error: any) {
+            // We expect the command to fail in case it isn't installed
+
+            return false;
+        }
+    }
+
     public static getAurPackageInformationByPackageName(params: Parameters, packageName: string): AurRpcApiPackage | null {
         if (! PackageHelper.isValidPackageName(packageName)) {
             console.warn(`[builder] AUR package "${packageName}" has an invalid name`);
@@ -105,6 +123,14 @@ export default class PackageHelper {
             const dependsPackages      = MakepkgHelper.getDependsFromPkgbuildData(pkgbuildData);
             const makeDependsPackages  = MakepkgHelper.getMakeDependsFromPkgbuildData(pkgbuildData);
             const checkDependsPackages = MakepkgHelper.getCheckDependsFromPkgbuildData(pkgbuildData);
+            const conflictsPackages    = MakepkgHelper.getConflictsFromPkgbuildData(pkgbuildData);
+
+            // Perform a simple conflicting package check to prevent vague errors later on
+            for (const conflictingPackage of conflictsPackages) {
+                if (PackageHelper.isPackageInstalled(conflictingPackage)) {
+                    return reject(`[builder] Cannot build "${packageName}": it conflicts with "${conflictingPackage}", which is already installed`);
+                }
+            }
 
             console.log(`[builder] Installing make dependencies for ${packageName}`);
             await Promise.all(
@@ -184,10 +210,18 @@ export default class PackageHelper {
             }
 
 
+            if (PackageHelper.isPackageInstalled(realPackageName)) {
+                console.info(`[builder] Package "${realPackageName}" has already been installed, no need to reinstall/rebuild it`);
+
+                resolve();
+                return;
+            }
+
+
             const packageType = await PackageTypeHelper.getPackageTypeByName(params, realPackageName);
 
             if (! packageType) {
-                reject(`[builder] The package "${realPackageName}" doesn't seem to exist`);
+                reject(`[builder] The package "${realPackageName}" doesn't seem to exist, as we couldn't figure out the package type`);
 
                 return;
             }

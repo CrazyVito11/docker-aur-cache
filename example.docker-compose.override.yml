@@ -1,0 +1,39 @@
+# Choose ONE of the following hosting options by uncommenting the relevant section.
+# These are just suggestions, you can always create your own configuration to fit your setup.
+
+# ============================================================
+# Option 1: No HTTP serving
+# If you plan to serve packages via git or directly from the
+# filesystem, you don't need to configure any HTTP serving.
+# Simply leave this file empty or don't create an override file at all.
+# ============================================================
+
+# ============================================================
+# Option 2: Simple port forward (NGINX)
+# Expose the NGINX server directly on a host port.
+# ============================================================
+# services:
+#   nginx:
+#     ports:
+#       - "8080:80"
+
+# ============================================================
+# Option 3: Traefik reverse proxy
+# Requires a Traefik reverse proxy container to be running.
+# Example implementation: https://github.com/CrazyVito11/traefik-reverse-proxy
+# ============================================================
+# services:
+#   nginx:
+#     networks:
+#       - traefik-reverse-proxy
+#     labels:
+#       - "traefik.enable=true"
+#       - "traefik.docker.network=traefik-reverse-proxy"
+#       - "traefik.http.routers.docker-aur-cache-nginx.rule=Host(`docker-aur-cache.localhost`)"
+#       - "traefik.http.routers.docker-aur-cache-nginx.entrypoints=http"
+#       - "traefik.http.routers.docker-aur-cache-nginx.tls=false"
+#
+# networks:
+#   traefik-reverse-proxy:
+#     name: traefik-reverse-proxy
+#     external: true

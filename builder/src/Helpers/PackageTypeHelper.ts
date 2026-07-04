@@ -113,11 +113,25 @@ export default class PackageTypeHelper {
         urlParams.append('q', binaryName);
 
         const response = await fetch(`https://archlinux.org/packages/search/json/?${urlParams.toString()}`);
-        const responseJson: PackageApiSearchApiResponse = await response.json();
+        const responseBody: string = await response.text();
+        let responseJson: PackageApiSearchApiResponse|null = null;
+
+        try {
+            responseJson = JSON.parse(responseBody);
+        } catch(e) {
+            console.error(`[builder] Unable to parse the JSON response from the AUR API for package "${binaryName}"`);
+            console.error(responseBody);
+        }
+
+        if (! responseJson) {
+            console.error(`[builder] AUR API returned no or an invalid response for package "${binaryName}"`);
+
+            return null;
+        }
 
         if (response.status === 200) {
             const foundPackage = responseJson.results.find((packageInfo: PackageApiPackage) => {
-                return packageInfo.provides.filter((provide: string) => provide === binaryName);
+                return packageInfo.provides.some((provide: string) => provide === binaryName);
             });
 
             if (foundPackage) {

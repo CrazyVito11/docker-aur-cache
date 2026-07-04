@@ -18,6 +18,10 @@ export default class RequiredValidator implements IValidator {
             return this.validateAsNumber(value);
         }
 
+        if (typeof value === "boolean") {
+            return this.validateAsBoolean(value);
+        }
+
         return false;
     };
 
@@ -31,6 +35,12 @@ export default class RequiredValidator implements IValidator {
 
     private validateAsNumber(value: number): boolean {
         // We can't validate numbers any further
+
+        return true;
+    }
+
+    private validateAsBoolean(value: boolean): boolean {
+        // We can't validate booleans any further
 
         return true;
     }

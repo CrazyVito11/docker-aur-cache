@@ -3,4 +3,4 @@
 repository/*
 !repository/.gitkeep
 packagelist.config.json
-.env
+docker-compose.override.yml

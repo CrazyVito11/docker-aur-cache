@@ -14,9 +14,10 @@ import PackageListConfiguration from './Types/PackageListConfiguration';
 import PackageBuildReport from './Types/PackageBuildReport';
 import PackageBuildReportLogLine from './Types/PackageBuildReportLogLine';
 import ContainerStatsLine from './Types/ContainerStatsLine';
+import BuildReport from './Types/BuildReport';
 
 const params = ParameterHelper.getParameters();
-const docker = new Docker({socketPath: '/var/run/docker.sock'});
+const docker = new Docker();
 
 
 const paramsValidationMessages = ValidatorHelper.validateObject(
@@ -205,79 +206,92 @@ const handlePackageList = async (aurPackageListPath: string) => {
             logs: [],
         };
 
-        try {
-            const command = BuilderHelper.getBuilderStartCommand(aurPackageListPath, packageConfiguration);
+        if (packageConfiguration.enabled) {
+            try {
+                const command = BuilderHelper.getBuilderStartCommand(aurPackageListPath, packageConfiguration);
 
-            console.log(`[build-manager] Starting the container with the following command: ${command}`);
+                console.log(`[build-manager] Starting the container with the following command: ${command}`);
 
-            const container = await docker.createContainer({
-                Image: params.builder_image_name,
-                AttachStdout: true,
-                AttachStderr: true,
-                User: 'builder',
-                Cmd: ['/bin/bash', '-c', command],
-                HostConfig: {
-                    OomScoreAdj: 1000, // Make it more likely the builder will be killed in low RAM situations instead of (potentially more crucial) applications
-                    Mounts: BuilderHelper.getBuilderMounts(),
-                    CpusetCpus: packageListConfiguration.builderLimit.cpusetCpus,
-                    Memory: FilesystemHelper.stringifiedSizeToBytes(packageListConfiguration.builderLimit.memory)
-                }
-            });
-
-            // Automatically discard the container if it takes too long
-            packageBuildTimeout = setTimeout(async () => {
-                console.error(`[build-manager] The package took too long to build, aborting`);
-
-                packageBuildReport.logs.push({
-                    type: 'error',
-                    value: 'The package took too long to build, aborting'
+                const container = await docker.createContainer({
+                    Image: params.builder_image_name,
+                    AttachStdout: true,
+                    AttachStderr: true,
+                    User: 'builder',
+                    Cmd: ['/bin/bash', '-c', command],
+                    HostConfig: {
+                        OomScoreAdj: 1000, // Make it more likely the builder will be killed in low RAM situations instead of (potentially more crucial) applications
+                        Mounts: BuilderHelper.getBuilderMounts(),
+                        CpusetCpus: packageListConfiguration.builderLimit.cpusetCpus,
+                        Memory: FilesystemHelper.stringifiedSizeToBytes(packageListConfiguration.builderLimit.memory)
+                    }
                 });
 
+                // Automatically discard the container if it takes too long
+                packageBuildTimeout = setTimeout(async () => {
+                    console.error(`[build-manager] The package took too long to build, aborting`);
+
+                    packageBuildReport.logs.push({
+                        timestamp: new Date().toISOString(),
+                        type: 'error',
+                        value: 'The package took too long to build, aborting'
+                    });
+
+                    await stopAllBuilderInstances();
+                }, maximumBuildTime * 1000);
+
+                await container.start();
+
+                container.attach({stream: true, stdout: true, stderr: true}, function (_, stream) {
+                    const lineTransformer = new LineTransformer();
+
+                    if (! stream) {
+                        return;
+                    }
+
+                    stream.pipe(lineTransformer);
+
+                    container.modem.demuxStream(stream, process.stdout, process.stderr);
+
+                    lineTransformer.on('data', (line: PackageBuildReportLogLine) => {
+                        packageBuildReport.logs.push(line);
+                    });
+                });
+
+                container.stats({stream: true}, function (_, stream) {
+                    const containerStatsTransformer = new ContainerStatsTransformer();
+
+                    if (! stream) {
+                        return;
+                    }
+
+                    stream.pipe(containerStatsTransformer);
+
+                    containerStatsTransformer.on('data', (line: ContainerStatsLine) => {
+                        packageBuildReport.containerStats.push(line);
+                    });
+                });
+
+                // Wait for the container to finish it's job
+                await container.wait();
+
+                await container.remove();
+            } catch (e) {
+                console.error(`[build-manager] Something went wrong while building`, e);
+
+                // We are not sure if the container also stopped properly
+                // So with this we are sure that no builders are still running
                 await stopAllBuilderInstances();
-            }, maximumBuildTime * 1000);
+            }
+        } else {
+            const packageSkippedMessage = `Package "${packageConfiguration.packageName}" has been set to disabled, skipping...`;
 
-            await container.start();
+            console.log(`[build-manager] ${packageSkippedMessage}`);
 
-            container.attach({stream: true, stdout: true, stderr: true}, function (_, stream) {
-                const lineTransformer = new LineTransformer();
-
-                if (! stream) {
-                    return;
-                }
-
-                stream.pipe(lineTransformer);
-
-                container.modem.demuxStream(stream, process.stdout, process.stderr);
-
-                lineTransformer.on('data', (line: PackageBuildReportLogLine) => {
-                    packageBuildReport.logs.push(line);
-                });
+            packageBuildReport.logs.push({
+                timestamp: new Date().toISOString(),
+                type: 'error',
+                value: packageSkippedMessage
             });
-
-            container.stats({stream: true}, function (_, stream) {
-                const containerStatsTransformer = new ContainerStatsTransformer();
-
-                if (! stream) {
-                    return;
-                }
-
-                stream.pipe(containerStatsTransformer);
-
-                containerStatsTransformer.on('data', (line: ContainerStatsLine) => {
-                    packageBuildReport.containerStats.push(line);
-                });
-            });
-
-            // Wait for the container to finish it's job
-            await container.wait();
-
-            await container.remove();
-        } catch (e) {
-            console.error(`[build-manager] Something went wrong while building`, e);
-
-            // We are not sure if the container also stopped properly
-            // So with this we are sure that no builders are still running
-            await stopAllBuilderInstances();
         }
 
         // Stop the timeout timer
@@ -306,12 +320,19 @@ const handlePackageList = async (aurPackageListPath: string) => {
 const generateBuildReport = async () => {
     console.log("[build-manager] Generating build report");
 
-    const currentDate = new Date();
-    const formattedDate = TimeHelper.getFormattedDateTimeForFilename(currentDate);
+    const buildEndTime = new Date();
+    const formattedDate = TimeHelper.getFormattedDateTimeForFilename(buildEndTime);
+
+    const buildReport: BuildReport = {
+        version: 1,
+        buildStartTime: startTime.toISOString(),
+        buildEndTime: buildEndTime.toISOString(),
+        packages: packageBuildReports,
+    };
 
     fs.writeFileSync(
         `${params.build_report_dir}/build-report-${formattedDate}.json`,
-        JSON.stringify(packageBuildReports)
+        JSON.stringify(buildReport)
     );
 
     console.log("[build-manager] The build report has been generated");

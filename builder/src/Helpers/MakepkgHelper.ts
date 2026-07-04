@@ -100,6 +100,22 @@ export default class MakepkgHelper {
         );
     }
 
+    public static getConflictsFromPkgbuildData(pkgbuildData: object): Array<string> {
+        if (! ("conflicts" in pkgbuildData)) {
+            return [];
+        }
+
+        if (typeof pkgbuildData.conflicts === "string") {
+            return MakepkgHelper.removeVersionRequirementsFromPackageNameList([pkgbuildData.conflicts]);
+        }
+
+        if (! Array.isArray(pkgbuildData.conflicts)) {
+            return [];
+        }
+
+        return MakepkgHelper.removeVersionRequirementsFromPackageNameList(pkgbuildData.conflicts);
+    }
+
     public static removeVersionRequirementsFromPackageNameList(packageNames: Array<string>): Array<string> {
         return packageNames.map((packageName: string) => {
             const newPackageName = packageName.split(/(>=|<=|>|<|==)/)[0].trim();

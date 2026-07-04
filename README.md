@@ -15,28 +15,48 @@ This Docker container was made to compile these AUR packages beforehand, and the
 This can also be extra beneficial if you have multiple computers running Arch Linux, as then you only have to compile the packages once for all those machines.
 
 
+## Architecture & Security
+This project consists of 2 core components, the build manager and builder.
+
+The build manager is responsible for managing the builder container, this includes building a new up-to-date version of that builder each time we want to build the package. This makes sure we are running a up-to-date "Arch" installation for each build we want to perform.
+
+The builder is responsible for actually cloning and building the AUR package, including all required dependencies of that AUR package.
+This container is thrown away and restarted for each AUR package you have configured, so each AUR build is performed in a clean environment.
+
+Because the builder container is thrown away after each build, it should also be pretty safe against malicious packages trying to compromise the build server. Just make sure to keep your Docker engine up-to-date to protect against potential Docker engine escape vulnerabilities.
+
+> [!WARNING]
+> Please note that if you build a malicious package, it will still be served by the server and could then be installed by a client, compromising that client.
+>
+> You should still proceed with caution when adding new AUR packages and keep up with Arch Linux news.
+
+The build manager also imposes certain limits to the builder.
+If the builder gets stuck on a package, it will eventually be forcefully killed by the build manager once the maximum time has expired.
+
+This not only prevents a build from unnecessarily consuming resources, it can also automatically clean up packages that intentionally cause this _(crypto miners for example)_.
+If a builder consumes too much RAM and the system starts running out of memory, we have configured the OOM score to be very high, making it likely the builder will be killed instead of something else on the server.
+
+Direct communication from the builder to the build manager isn't possible for security reasons, and in case somehow the builder could access the build manager, we have limited the Docker socket to only the bare minimum we need to limit the attack surface.
+
+The only method the builder can use to pass results to the build manager, is to use the shared Docker volume, which it uses to pass the compiled packages back to the manager.
+Once all packages have been built, the build manager scans the volume for `.pkg.tar.zst` files and moves them into the repository.
+
+
 ## Setup (Container)
 1. Make sure you meet the follow prerequisites
     - Docker + Docker Compose have been installed
-    - The [Traefik reverse proxy container](https://github.com/CrazyVito11/traefik-reverse-proxy) has been configured
-    - A registered domain name
-        - You can use something like [PiHole](https://github.com/pi-hole/pi-hole) to register local domains if you aren't going to host it publicly
-> [!TIP]
-> While this container was designed to work with Traefik and a domain name, with a couple of tweaks you can bind to a TCP port instead.
-> Allowing you to skip the requirement of needing both Traefik and a domain name to host this application.
->
-> See the section **Bind NGINX to port instead of Traefik** for instructions.
 2. Clone this repository to your server
-3. Make a copy of `.env.example` and call it `.env`
-4. Make changes to the `.env` file if needed
-5. Make a copy of `packagelist.json.example` and call it `packagelist.json`
-6. Add the packages you want to provide to the `packagelist.json` file
+3. Make a copy of `example.docker-compose.override.yml` and call it `docker-compose.override.yml`
+    - Pick the hosting variant that fits your setup by uncommenting the relevant section
+    - **Tip:** These are just suggestions, you can also create your own configuration to fit your setup
+4. Make a copy of `example.packagelist.config.json` and call it `packagelist.config.json`
+5. Add the packages you want to provide to the `packagelist.json` file
     - You can find documentation about this file at section **Configure packagelist**.
-7. Update the repository permissions with `chmod 777 ./repository`
+6. Update the repository permissions with `chmod 777 ./repository`
     - **Note:** We are aware that this isn't very secure, this will be improved in the future.
-8. Build the container with `docker compose build`
-9. Start the container with `docker compose up -d`
-10. Set the right permissions with `docker compose exec build-manager bash -c 'chown builder /package-staging; chown builder /aur-package-list'`
+7. Build the container with `docker compose build`
+8. Start the container with `docker compose up -d`
+9. Set the right permissions with `docker compose exec build-manager bash -c 'chown builder /package-staging; chown builder /aur-package-list'`
 
 The container should now be ready, try visiting your domain and you should see a index page!
 This page will also show packages that are available for downloading.
@@ -89,6 +109,7 @@ This object is used to define the settings in order to build one specific packag
 
 | **Field**                | **Required** | **Type**               | **Description**                                                                                                            |
 |--------------------------|--------------|------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `enabled`                | Yes          | `boolean`              | Defines if this package should be build or not, can be used to temporarily stop building a specific package.               |
 | `packageName`            | Yes          | `string`               | Defines the name of the AUR package that should be build.                                                                  |
 | `resolveDependenciesAs`  | No           | `object`               | A key-value mapping where the key is the original dependency, and the value is the replacement package that should be used.|
 | `runCommandsBeforeBuild` | No           | `array of strings`     | An array of shell commands to be executed before the package build process starts.                                         |
@@ -135,15 +156,3 @@ These reports can be found in the `build-reports` directory of the webserver tha
 > For now these are only available in JSON format, but these will become easier to read in a future commit.
 
 
-### Bind NGINX to port instead of Traefik
-While it's intended to be used with my Traefik container, it does increase the steps needed to get this application up and running, and it might not even be possible in certain situations.
-
-With a couple of modifications to the `docker-compose.yml` file you can skip the need for Traefik and a domain name, and just connect directly to a TCP port instead.
-
-1. Remove the entire `networks` section at the bottom, as we no longer need that external network.
-2. Remove the `labels` section from the `nginx` container.
-3. Remove the `traefik-reverse-proxy` network from the `nginx` container.
-4. Add a `ports` section to the `nginx` container and bind the port you want to use to `80` on the container.
-    - **Example:** `- 8080:80` to bind it to port `8080` on your host machine.
-
-It should now be accessible on your desired TCP port without having to set up my Traefik configuration as well.

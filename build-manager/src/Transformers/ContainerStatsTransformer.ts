@@ -3,23 +3,40 @@ import { ContainerStats } from "dockerode";
 import ContainerStatsLine from "../Types/ContainerStatsLine";
 
 export default class ContainerStatsTransformer extends Transform {
+    private buffer = '';
 
     constructor() {
         super({ readableObjectMode: true });
     }
 
     public _transform(data: any, encoding: BufferEncoding, callback: Function) {
-        try {
-            this.processStats(data);
-        } catch (e) {
-            console.error(`[build-manager] An error occurred while processing the container stats`, e);
+        // The stats stream is newline-delimited JSON, so we need to buffer it
+        this.buffer += data.toString();
+
+        // Split each newline to get each full stats JSON object
+        const statsJsonMessages = this.buffer.split('\n');
+
+        // Keep the last element in the buffer, as it may be an incomplete JSON object
+        this.buffer = statsJsonMessages.pop() ?? '';
+
+        for (const statsJsonMessage of statsJsonMessages) {
+            const trimmedStatsJsonMessage = statsJsonMessage.trim();
+
+            // Skip empty lines that may appear between JSON objects
+            if (! trimmedStatsJsonMessage) continue;
+
+            try {
+                this.processStats(trimmedStatsJsonMessage);
+            } catch (e) {
+                console.error(`[build-manager] An error occurred while processing the container stats`, e);
+            }
         }
 
         callback();
     }
 
-    private processStats(data: any) {
-        const stats: ContainerStats = JSON.parse(data.toString());
+    private processStats(data: string) {
+        const stats: ContainerStats = JSON.parse(data);
 
         // CPU Usage calculation
         const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
@@ -32,13 +49,13 @@ export default class ContainerStatsTransformer extends Transform {
         const memoryLimitMB = stats.memory_stats.limit / (1024 * 1024); // Convert to MB
         const memoryUsagePercent = (memoryUsageMB / memoryLimitMB) * 100;
 
-        // Throw away invalid samples
-        if (typeof cpuUsagePercent !== 'number' || typeof memoryUsageMB !== 'number' || typeof memoryUsagePercent !== 'number') {
+        // Throw away invalid samples (Number.isFinite also rejects NaN and Infinity samples, unlike typeof)
+        if (! Number.isFinite(cpuUsagePercent) || ! Number.isFinite(memoryUsageMB) || ! Number.isFinite(memoryUsagePercent)) {
             return;
         }
 
         const containerStats: ContainerStatsLine = {
-            sampleTakenAt: new Date().getTime(),
+            sampleTakenAt: new Date().toISOString(),
             cpuUsagePercent: parseFloat(cpuUsagePercent.toFixed(2)),
             memoryUsageMB: parseFloat(memoryUsageMB.toFixed(2)),
             memoryUsagePercent: parseFloat(memoryUsagePercent.toFixed(2))

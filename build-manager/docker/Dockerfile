@@ -13,13 +13,6 @@ USER builder
 RUN mkdir -p /home/builder
 WORKDIR /home/builder
 
-# Prepare Docker access
-USER root
-ARG DOCKER_GID
-RUN groupadd -g $DOCKER_GID dockerindocker
-RUN usermod -a -G dockerindocker builder
-USER builder
-
 # Build build-manager application
 USER builder
 COPY ./build-manager /build-manager
