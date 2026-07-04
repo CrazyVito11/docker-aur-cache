@@ -131,7 +131,7 @@ export default class PackageTypeHelper {
 
         if (response.status === 200) {
             const foundPackage = responseJson.results.find((packageInfo: PackageApiPackage) => {
-                return packageInfo.provides.filter((provide: string) => provide === binaryName);
+                return packageInfo.provides.some((provide: string) => provide === binaryName);
             });
 
             if (foundPackage) {
