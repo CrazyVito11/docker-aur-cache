@@ -4,7 +4,7 @@ FROM --platform=linux/amd64 archlinux:multilib-devel
 ENV CARCH=x86_64
 RUN pacman-key --init
 RUN pacman -Sy --noconfirm archlinux-keyring
-RUN pacman -Syu --noconfirm git base-devel fcron nodejs-lts-iron npm
+RUN pacman -Syu --noconfirm git base-devel fcron nodejs-lts-jod npm
 
 # Create the builder user
 RUN useradd -u 1000 -ms /bin/bash builder
