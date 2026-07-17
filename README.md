@@ -107,16 +107,61 @@ This object is used to limit how many system resources the builder instance is a
 ### Package object description
 This object is used to define the settings in order to build one specific package.
 
-| **Field**                | **Required** | **Type**               | **Description**                                                                                                            |
-|--------------------------|--------------|------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `enabled`                | Yes          | `boolean`              | Defines if this package should be build or not, can be used to temporarily stop building a specific package.               |
-| `packageName`            | Yes          | `string`               | Defines the name of the AUR package that should be build.                                                                  |
-| `resolveDependenciesAs`  | No           | `object`               | A key-value mapping where the key is the original dependency, and the value is the replacement package that should be used.|
-| `runCommandsBeforeBuild` | No           | `array of strings`     | An array of shell commands to be executed before the package build process starts.                                         |
+| **Field**                | **Required** | **Type**               | **Description**                                                                                                                                                            |
+|--------------------------|--------------|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `enabled`                | Yes          | `boolean`              | Defines if this package should be build or not, can be used to temporarily stop building a specific package.                                                               |
+| `packageName`            | Yes          | `string`               | Defines the name of the AUR package that should be build.                                                                                                                  |
+| `enforceCustomPackage`   | No           | `boolean`              | When `true`, the package must be provided via the `custom-packages` directory. A git clone from AUR is never attempted, and the build fails if no custom package is found. |
+| `resolveDependenciesAs`  | No           | `object`               | A key-value mapping where the key is the original dependency, and the value is the replacement package that should be used.                                                |
+| `runCommandsBeforeBuild` | No           | `array of strings`     | An array of shell commands to be executed before the package build process starts.                                                                                         |
 
 > [!TIP]
 > The build process is executed in a separate container for each AUR package, which is destroyed after the build is complete.
 > If you for example run a command for `package-a` to import a key that `package-b` will also need, you will have to add that command also to the configuration of `package-b`.
+
+
+## Custom packages
+The `custom-packages` directory allows you to provide your own `PKGBUILD` for any package, instead of cloning it from AUR.
+
+This is useful for:
+- **Private packages** that don't exist on AUR.
+- **Security-sensitive packages** where you want to manually review the PKGBUILD before it is built.
+- **Patches and overrides** where an AUR package needs to be patched or modified for some reason.
+
+### How it works
+Place a directory named after the package inside `custom-packages`, containing at minimum a `PKGBUILD` file:
+
+```
+custom-packages/
+└── my-package/
+    └── PKGBUILD
+```
+
+Before every `git clone` from AUR, the builder checks whether a matching directory exists in `custom-packages`.
+If one is found, it uses that directory instead of cloning from the AUR.
+
+A log line is emitted so you can confirm which source was used:
+
+```
+[builder] Custom package override: using custom package for "my-package" instead of AUR clone
+```
+
+This check applies to **both the main package and any AUR dependencies**, so you can override a specific dependency pulled in by another package the same way.
+
+### Enforcing a custom package
+If you want to guarantee that a package is **never** cloned from AUR, for example because you always want to manually verify it first, set `enforceCustomPackage: true` in `packagelist.config.json`:
+
+```json
+{
+    "enabled": true,
+    "packageName": "my-package",
+    "enforceCustomPackage": true
+}
+```
+
+With this flag set, the build will fail if the package directory is not present in `custom-packages`.
+
+This prevents the builder from silently falling back to an unreviewed AUR clone.
 
 
 ## Tips

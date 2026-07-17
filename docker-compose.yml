@@ -9,7 +9,8 @@ services:
       - package-staging:/package-staging
       - aur-package-list:/aur-package-list
     environment:
-      - DOCKER_HOST=tcp://docker-socket-proxy:2375
+      DOCKER_HOST: "tcp://docker-socket-proxy:2375"
+      CUSTOM_PACKAGES_HOST_PATH: "${PWD}/custom-packages"
     restart: unless-stopped
     networks:
       - default
@@ -25,10 +26,10 @@ services:
     networks:
       - default
     environment:
-      - POST=1        # Allow non-GET methods to allow us to interact with the Docker engine, instead of it being "read-only"
-      - CONTAINERS=1  # List, create, start, attach, stream stats, wait for, and remove builder containers
-      - IMAGES=1      # List and remove the builder image between runs
-      - BUILD=1       # Required for building a fresh builder image before each build cycle
+      POST: 1        # Allow non-GET methods to allow us to interact with the Docker engine, instead of it being "read-only"
+      CONTAINERS: 1  # List, create, start, attach, stream stats, wait for, and remove builder containers
+      IMAGES: 1      # List and remove the builder image between runs
+      BUILD: 1       # Required for building a fresh builder image before each build cycle
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     logging:

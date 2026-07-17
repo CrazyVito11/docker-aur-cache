@@ -14,6 +14,7 @@ const params = ParameterHelper.getParametersFromRawParameters(paramsRaw);
 
 console.log(`Package configuration: ${JSON.stringify(params.package_configuration)}`);
 console.log(`Build directory: ${params.build_dir}`);
+console.log(`Custom packages directory: ${params.custom_packages_dir}`);
 console.log(`Package staging directory: ${params.package_staging_dir}`);
 console.log(`AUR package list path: ${params.aur_package_list_path}`);
 
