@@ -6,11 +6,11 @@
   },
   "devDependencies": {
     "@types/dockerode": "^3.3.31",
-    "@types/node": "^20.14.11",
+    "@types/node": "^22.0.0",
     "typescript": "^5.5.3"
   },
   "dependencies": {
-    "dockerode": "^4.0.2",
+    "dockerode": "^5.0.1",
     "minimist": "^1.2.8"
   }
 }

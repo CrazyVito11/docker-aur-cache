@@ -102,18 +102,39 @@ export default class PackageHelper {
 
             // Clone the package if it doesn't exist yet
             if (! fs.existsSync(fullPackagePath)) {
-                console.log(`[builder] AUR package ${packageName} directory doesn't seem to exist yet`);
+                console.log(`[builder] AUR package ${packageName} directory doesn't seem to exist yet, preparing directory to build in...`);
 
-                // Make sure it's a valid AUR package
-                if (! PackageHelper.isAurPackage(params, packageName)) {
+                // Resolve via PackageBase so enforceCustomPackage still applies when Name and PackageBase differ in AUR
+                const mainPackageBase = PackageHelper.getAurPackageInformationByPackageName(params, params.package_configuration.packageName)?.PackageBase
+                    ?? params.package_configuration.packageName;
+
+                const isEnforceCustomPackage = params.package_configuration.enforceCustomPackage;
+                const isMainPackage = packageName === mainPackageBase;
+                const isAurPackage = PackageHelper.isAurPackage(params, packageName);
+
+                const customPackagePath = `${params.custom_packages_dir}/${packageName}`;
+                const hasCustomPackage = fs.existsSync(customPackagePath);
+
+                // Block the package if enforce custom package is enabled, but no custom package file exists
+                if (isMainPackage && isEnforceCustomPackage && ! hasCustomPackage) {
+                    return reject(`[builder] enforceCustomPackage is set for "${packageName}" but no custom package was found in "${customPackagePath}"`);
+                }
+
+                // Block the package if we can't find it at all
+                if (! hasCustomPackage && ! isAurPackage) {
                     console.error(`[builder] isAurPackage reports ${packageName} to not be an existing AUR package!`);
 
                     return reject("Invalid AUR package");
                 }
 
-                console.log(`[builder] Cloning AUR package ${packageName}`);
-
-                execSync(`cd "${params.build_dir}"; git clone https://aur.archlinux.org/${packageName}.git`);
+                // Check if we have a override, if so, use it, otherwise clone as usual
+                if (hasCustomPackage) {
+                    console.log(`[builder] Custom package override: using custom package for "${packageName}" instead of AUR clone`);
+                    fs.cpSync(customPackagePath, fullPackagePath, { recursive: true });
+                } else {
+                    console.log(`[builder] Cloning AUR package ${packageName}`);
+                    execSync(`cd "${params.build_dir}"; git clone https://aur.archlinux.org/${packageName}.git`);
+                }
             }
 
 
@@ -132,6 +153,7 @@ export default class PackageHelper {
                 }
             }
 
+            // TODO: Don't rebuild packages if we already installed them (Example: aws-sam-cli with all the boto3 dependencies that is provided by python-boto3-stubs), Handle this inside the installPackage function so we also support user configured resolveDependenciesAs settings?
             console.log(`[builder] Installing make dependencies for ${packageName}`);
             await Promise.all(
                 makeDependsPackages.map((dependencyPackageName: string) => 
@@ -158,6 +180,7 @@ export default class PackageHelper {
 
 
             console.log(`[builder] Starting build process for ${packageName}`);
+            // TODO: Increase buffer size (migrate to spawnSync, and set the buffer to like 4MB)
             execSync(`cd "${fullPackagePath}"; makepkg --clean --force --nodeps`);
 
             resolve(PackageHelper.getPackagesInDirectory(fullPackagePath));
@@ -210,6 +233,7 @@ export default class PackageHelper {
             }
 
 
+            // TODO: Make this function also function properly in case 1 package requests the same dependency multiple times (Example: aws-sam-cli -> python-mypy-boto3-* -> python-boto3-stubs)
             if (PackageHelper.isPackageInstalled(realPackageName)) {
                 console.info(`[builder] Package "${realPackageName}" has already been installed, no need to reinstall/rebuild it`);
 

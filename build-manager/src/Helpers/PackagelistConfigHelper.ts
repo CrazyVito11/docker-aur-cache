@@ -43,6 +43,9 @@ export default class PackagelistConfigHelper {
                 new RequiredValidator(),
                 new TypeValidator("string")
             ],
+            'packages.*.enforceCustomPackage': [
+                new TypeValidator("boolean")
+            ],
             'packages.*.resolveDependenciesAs': [
                 new TypeValidator("object")
             ],

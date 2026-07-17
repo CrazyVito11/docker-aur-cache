@@ -22,6 +22,11 @@
             "runCommandsBeforeBuild": [
                 "curl -sS https://download.spotify.com/debian/pubkey_C85668DF69375001.gpg  | gpg --import -"
             ]
+        },
+        {
+            "enabled": false,
+            "packageName": "proton-pass-bin",
+            "enforceCustomPackage": true
         }
     ]
 }

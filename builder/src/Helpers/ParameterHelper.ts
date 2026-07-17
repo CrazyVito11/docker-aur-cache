@@ -11,7 +11,8 @@ export default class ParameterHelper {
             typeof params.build_dir === "string" &&
             typeof params.package_staging_dir === "string" &&
             typeof params.aur_package_list_path === "string" &&
-            typeof params.package_configuration_encoded === "string"
+            typeof params.package_configuration_encoded === "string" &&
+            typeof params.custom_packages_dir === "string"
         );
     }
 
@@ -19,6 +20,7 @@ export default class ParameterHelper {
         return {
             build_dir: params.build_dir,
             package_staging_dir: params.package_staging_dir,
+            custom_packages_dir: params.custom_packages_dir,
             aur_package_list_path: params.aur_package_list_path,
             package_configuration: JSON.parse(Buffer.from(params.package_configuration_encoded, 'base64').toString('utf8')),
         }
