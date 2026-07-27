@@ -180,8 +180,7 @@ export default class PackageHelper {
 
 
             console.log(`[builder] Starting build process for ${packageName}`);
-            // TODO: Increase buffer size (migrate to spawnSync, and set the buffer to like 4MB)
-            execSync(`cd "${fullPackagePath}"; makepkg --clean --force --nodeps`);
+            execSync(`cd "${fullPackagePath}"; makepkg --clean --force --nodeps`, { stdio: 'inherit' });
 
             resolve(PackageHelper.getPackagesInDirectory(fullPackagePath));
         });
