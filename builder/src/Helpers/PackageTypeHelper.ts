@@ -1,3 +1,4 @@
+import fs from "fs";
 import { execSync } from "child_process";
 import Parameters from "../Types/Parameters";
 import PackageType from "../Types/PackageType";
@@ -10,6 +11,13 @@ export default class PackageTypeHelper {
 
     public static getPackageTypeByName(params: Parameters, packageName: string): Promise<PackageType | null> {
         return new Promise(async (resolve) => {
+
+            const customPackageResult = await PackageTypeHelper.checkCustomPackage(params, packageName);
+            if (customPackageResult) {
+                resolve(customPackageResult);
+
+                return;
+            }
 
             const systemResult = await PackageTypeHelper.checkSystemPackageViaPacman(packageName);
             if (systemResult) {
@@ -55,6 +63,20 @@ export default class PackageTypeHelper {
 
             return;
         });
+    }
+
+    private static async checkCustomPackage(params: Parameters, packageName: string): Promise<PackageType | null> {
+        const customPackagePath = `${params.custom_packages_dir}/${packageName}`;
+
+        // Check if the package exists in the custom-packages directory, if so, it's definitely an AUR package
+        if (fs.existsSync(customPackagePath)) {
+            return {
+                type: 'aur',
+                packageToInstall: packageName
+            };
+        }
+
+        return null;
     }
 
     private static async checkSystemPackageViaPacman(packageName: string): Promise<PackageType | null> {
